@@ -44,14 +44,12 @@ class ResidualBlock(nn.Module):
         if isinstance(self.layer, nn.MultiheadAttention):
             N = x.shape[0]
             seq_len = x.shape[1]
-
             attn_mask = torch.zeros(N * self.num_head, seq_len, seq_len)
 
-            for i in range(N):
-                attn_mask[i] = x[i]
-                attn_mask[i] = torch.tril(attn_mask[i])
-                attn_mask[i][attn_mask[i] != 0] = 1
-                attn_mask[i] = ~attn_mask[i].bool()
+            attn_mask = x
+            attn_mask = torch.triu(attn_mask)
+            attn_mask[attn_mask != 0] = 1
+            attn_mask = attn_mask.bool()
 
             src = x.transpose(0, 1)     # [seq_len, N, features]
             output, self.attn_weights = self.layer(src, src, src, attn_mask=attn_mask)
