@@ -28,11 +28,12 @@ class PositionalEncoding(nn.Module):
 
 
 class ResidualBlock(nn.Module):
-    def __init__(self, layer: nn.Module, embed_dim: int, p=0.1) -> None:
+    def __init__(self, layer: nn.Module, embed_dim: int, num_head: int, p=0.1) -> None:
         super(ResidualBlock, self).__init__()
         self.layer = layer
         self.dropout = nn.Dropout(p=p)
         self.norm = nn.LayerNorm(embed_dim)
+        self.num_head = num_head
         self.attn_weights = None
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -41,8 +42,19 @@ class ResidualBlock(nn.Module):
         :return: [N, seq_len, features]
         """
         if isinstance(self.layer, nn.MultiheadAttention):
+            N = x.shape[0]
+            seq_len = x.shape[1]
+
+            attn_mask = torch.zeros(N * self.num_head, seq_len, seq_len)
+
+            for i in range(N):
+                attn_mask[i] = x[i]
+                attn_mask[i] = torch.tril(attn_mask[i])
+                attn_mask[i][attn_mask[i] != 0] = 1
+                attn_mask[i] = ~attn_mask[i].bool()
+
             src = x.transpose(0, 1)     # [seq_len, N, features]
-            output, self.attn_weights = self.layer(src, src, src)
+            output, self.attn_weights = self.layer(src, src, src, attn_mask=attn_mask)
             output = output.transpose(0, 1)     # [N, seq_len, features]
 
         else:
@@ -76,7 +88,7 @@ class EncoderBlock(nn.Module):
     def __init__(self, embed_dim: int, num_head: int, dropout_rate=0.1) -> None:
         super(EncoderBlock, self).__init__()
         self.attention = ResidualBlock(
-            nn.MultiheadAttention(embed_dim, num_head), embed_dim, p=dropout_rate
+            nn.MultiheadAttention(embed_dim, num_head), embed_dim, num_head, p=dropout_rate
         )
         self.ffn = ResidualBlock(PositionWiseFeedForward(embed_dim), embed_dim, p=dropout_rate)
 
