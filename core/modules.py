@@ -44,11 +44,9 @@ class ResidualBlock(nn.Module):
         if isinstance(self.layer, nn.MultiheadAttention):
             N = x.shape[0]
             seq_len = x.shape[1]
-            attn_mask = torch.zeros(N * self.num_head, seq_len, seq_len)
-
-            attn_mask = x
+            attn_mask = torch.ones(N * self.num_head, seq_len, seq_len)
+            
             attn_mask = torch.triu(attn_mask)
-            attn_mask[attn_mask != 0] = 1
             attn_mask = attn_mask.bool()
 
             src = x.transpose(0, 1)     # [seq_len, N, features]
@@ -88,7 +86,7 @@ class EncoderBlock(nn.Module):
         self.attention = ResidualBlock(
             nn.MultiheadAttention(embed_dim, num_head), embed_dim, num_head, p=dropout_rate
         )
-        self.ffn = ResidualBlock(PositionWiseFeedForward(embed_dim), embed_dim, p=dropout_rate)
+        self.ffn = ResidualBlock(PositionWiseFeedForward(embed_dim), embed_dim, num_head, p=dropout_rate)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.attention(x)
