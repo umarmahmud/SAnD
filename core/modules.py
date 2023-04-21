@@ -45,12 +45,18 @@ class ResidualBlock(nn.Module):
             N = x.shape[0]
             seq_len = x.shape[1]
             attn_mask = torch.ones(N * self.num_head, seq_len, seq_len)
+            key_padding_mask = torch.ones(N, seq_len)
             
             attn_mask = torch.triu(attn_mask)
             attn_mask = attn_mask.bool()
 
+            for i in range(N):
+                unpadded_rows = int(torch.count_nonzero(torch.count_nonzero(x[i], dim=1)))
+                key_padding_mask[i][:unpadded_rows] = 0
+            key_padding_mask = key_padding_mask.bool()
+
             src = x.transpose(0, 1)     # [seq_len, N, features]
-            output, self.attn_weights = self.layer(src, src, src, attn_mask=attn_mask)
+            output, self.attn_weights = self.layer(src, src, src, attn_mask=attn_mask, key_padding_mask=key_padding_mask)
             output = output.transpose(0, 1)     # [N, seq_len, features]
 
         else:
