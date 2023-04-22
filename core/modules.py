@@ -53,6 +53,10 @@ class ResidualBlock(nn.Module):
                 unpadded_rows = int(torch.count_nonzero(torch.count_nonzero(x[i], dim=1)))
                 key_padding_mask[i][:unpadded_rows] = 0
 
+            if torch.cuda.is_available():
+                key_padding_mask = key_padding_mask.to('cuda')
+                attn_mask = attn_mask.to('cuda')
+
             src = x.transpose(0, 1)     # [seq_len, N, features]
             output, self.attn_weights = self.layer(src, src, src, attn_mask=attn_mask, key_padding_mask=key_padding_mask)
             output = output.transpose(0, 1)     # [N, seq_len, features]
