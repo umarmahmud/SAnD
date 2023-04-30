@@ -8,7 +8,7 @@ from typing import Dict
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, roc_auc_score
 
 
 class NeuralNetworkClassifier:
@@ -109,7 +109,7 @@ class NeuralNetworkClassifier:
             notice = "Running on {} GPUs.".format(torch.cuda.device_count())
             print("\033[33m" + notice + "\033[0m")
 
-    def fit(self, loader: Dict[str, DataLoader], epochs: int, checkpoint_path: str = None, validation: bool = True) -> None:
+    def fit(self, loader: Dict[str, DataLoader], epochs: int, task: str, checkpoint_path: str = None, validation: bool = True) -> None:
         """
         | The method of training your PyTorch Model.
         | With the assumption, This method use for training network for classification.
@@ -176,11 +176,19 @@ class NeuralNetworkClassifier:
                     loss.backward()
                     self.optimizer.step()
 
-                    _, predicted = torch.max(outputs, 1)
-                    correct += (predicted == y).sum().float().cpu().item()
+                    if task == "mortality":
+                        _, predicted = torch.max(outputs, 1)
+                        correct += (predicted == y).sum().float().cpu().item()
 
-                    self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
-                    self.experiment.log_metric("accuracy", float(correct / total), step=epoch)
+                        self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
+                        self.experiment.log_metric("accuracy", float(correct / total), step=epoch)
+                    elif task == "phenotyping":
+                        outputs = outputs.detach().numpy()
+                        accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+
+                        self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
+                        self.experiment.log_metric("accuracy", float(accuracy), step=epoch)
+
             if validation:
                 with self.experiment.validate():
                     with torch.no_grad():
@@ -203,7 +211,7 @@ class NeuralNetworkClassifier:
 
             pbar.close()
 
-    def evaluate(self, loader: DataLoader, verbose: bool = False) -> None or float:
+    def evaluate(self, loader: DataLoader, task: str, verbose: bool = False) -> None or float:
         """
         The method of evaluating your PyTorch Model.
         With the assumption, This method use for training network for classification.
@@ -243,14 +251,24 @@ class NeuralNetworkClassifier:
 
                     outputs = self.model(x)
                     loss = self.criterion(outputs, y)
-                    _, predicted = torch.max(outputs, 1)
-                    correct += (predicted == y).sum().float().cpu().item()
 
-                    running_loss += loss.cpu().item()
-                    running_corrects += torch.sum(predicted == y).float().cpu().item()
+                    if task == "mortality":
+                        _, predicted = torch.max(outputs, 1)
+                        correct += (predicted == y).sum().float().cpu().item()
 
-                    self.experiment.log_metric("loss", running_loss)
-                    self.experiment.log_metric("accuracy", float(running_corrects / total))
+                        running_loss += loss.cpu().item()
+                        running_corrects += torch.sum(predicted == y).float().cpu().item()
+
+                        self.experiment.log_metric("loss", running_loss)
+                        self.experiment.log_metric("accuracy", float(running_corrects / total))
+                    elif task == "phenotyping":
+                        outputs = outputs.detach().numpy()
+                        accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+
+                        running_loss += loss.cpu().item()
+
+                        self.experiment.log_metric("loss", running_loss)
+                        self.experiment.log_metric("accuracy", float(accuracy))
                 pbar.close()
             acc = self.experiment.get_metric("accuracy")
 
