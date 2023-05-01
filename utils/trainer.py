@@ -183,8 +183,12 @@ class NeuralNetworkClassifier:
                         self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
                         self.experiment.log_metric("accuracy", float(correct / total), step=epoch)
                     elif task == "phenotyping":
-                        outputs = outputs.detach().numpy()
-                        accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+                        outputs = outputs.cpu().tolist()
+                        y = y.cpu().tolist()
+                        try:
+                            accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+                        except ValueError:
+                            pass
 
                         self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
                         self.experiment.log_metric("accuracy", float(accuracy), step=epoch)
@@ -264,8 +268,12 @@ class NeuralNetworkClassifier:
                         self.experiment.log_metric("loss", running_loss)
                         self.experiment.log_metric("accuracy", float(running_corrects / total))
                     elif task == "phenotyping":
-                        outputs = outputs.detach().numpy()
-                        accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+                        outputs = outputs.cpu().detach().numpy()
+                        y = y.cpu().detach().numpy()
+                        try:
+                            accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+                        except ValueError:
+                            pass
 
                         running_loss += loss.cpu().item()
 
