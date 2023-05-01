@@ -176,7 +176,7 @@ class NeuralNetworkClassifier:
                     loss.backward()
                     self.optimizer.step()
 
-                    if task == "mortality":
+                    if task == "mortality" or task == "decompensation":
                         _, predicted = torch.max(outputs, 1)
                         correct += (predicted == y).sum().float().cpu().item()
 
@@ -188,6 +188,8 @@ class NeuralNetworkClassifier:
 
                         self.experiment.log_metric("loss", loss.cpu().item(), step=epoch)
                         self.experiment.log_metric("accuracy", float(accuracy), step=epoch)
+                    else:
+                        raise Exception("invalid task")
 
             if validation:
                 with self.experiment.validate():
@@ -252,7 +254,7 @@ class NeuralNetworkClassifier:
                     outputs = self.model(x)
                     loss = self.criterion(outputs, y)
 
-                    if task == "mortality":
+                    if task == "mortality" or task == "decompensation":
                         _, predicted = torch.max(outputs, 1)
                         correct += (predicted == y).sum().float().cpu().item()
 
@@ -269,6 +271,8 @@ class NeuralNetworkClassifier:
 
                         self.experiment.log_metric("loss", running_loss)
                         self.experiment.log_metric("accuracy", float(accuracy))
+                    else:
+                        raise Exception("invalid task")
                 pbar.close()
             acc = self.experiment.get_metric("accuracy")
 
