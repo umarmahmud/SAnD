@@ -186,7 +186,7 @@ class NeuralNetworkClassifier:
                         outputs = outputs.cpu().tolist()
                         y = y.cpu().tolist()
                         try:
-                            accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+                            accuracy = roc_auc_score(y, outputs)
                         except ValueError:
                             pass
 
@@ -271,7 +271,7 @@ class NeuralNetworkClassifier:
                         outputs = outputs.cpu().detach().numpy()
                         y = y.cpu().detach().numpy()
                         try:
-                            accuracy = roc_auc_score(y, outputs, multi_class='ovo')
+                            accuracy = roc_auc_score(y, outputs)
                         except ValueError:
                             pass
 
